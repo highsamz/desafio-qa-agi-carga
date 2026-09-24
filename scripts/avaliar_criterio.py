@@ -37,7 +37,7 @@ def main():
     ap.add_argument("--fim", type=float, default=None, help="fim da janela (s)")
     ap.add_argument("--alvo-rps", type=float, default=250)
     ap.add_argument("--p90-max", type=float, default=2000)
-    ap.add_argument("--erro-max", type=float, default=1.0, help="% máximo de erros")
+    ap.add_argument("--erro-max", type=float, default=1.0, help="%% máximo de erros")
     ap.add_argument("--titulo", default="Resultado")
     a = ap.parse_args()
 
