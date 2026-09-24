@@ -5,7 +5,11 @@ set -euo pipefail
 
 TESTE="${1:-carga}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-JMETER="${JMETER_HOME:+$JMETER_HOME/bin/}jmeter"
+JMETER="${JMETER:-${JMETER_HOME:+$JMETER_HOME/bin/}jmeter}"
+# No Git Bash o lancador Unix do JMeter nao resolve o java.exe do Windows; o .bat resolve.
+if [ "${OS:-}" = "Windows_NT" ] && [ -f "${JMETER}.bat" ]; then
+  JMETER="${JMETER}.bat"
+fi
 export HEAP="${HEAP:--Xms1g -Xmx4g}"
 
 # Parâmetros (podem ser sobrescritos por variáveis de ambiente)
@@ -43,8 +47,27 @@ echo ">> Executando $JMX -> $OUT"
   -e -o "$OUT/dashboard"
 
 echo ">> Avaliando critério de aceitação (janela ${INI}s-${FIM}s)"
-python3 "$ROOT/scripts/avaliar_criterio.py" "$OUT/resultados.jtl" \
+PY="${PYTHON:-python3}"
+command -v "$PY" >/dev/null 2>&1 || PY=python
+
+set +e
+"$PY" "$ROOT/scripts/avaliar_criterio.py" "$OUT/resultados.jtl" \
   --inicio "$INI" --fim "$FIM" --alvo-rps "$ALVO_RPS" --p90-max 2000 \
-  --titulo "Teste de $TESTE" | tee "$OUT/avaliacao.md" || true
+  --titulo "Teste de $TESTE" | tee "$OUT/avaliacao.md"
+STATUS=${PIPESTATUS[0]}
+set -e
 
 echo ">> Dashboard: $OUT/dashboard/index.html"
+
+# A avaliacao e o entregavel do teste: relatorio vazio significa que ela falhou,
+# e isso nao pode passar despercebido (era o que o antigo "|| true" escondia).
+if [ ! -s "$OUT/avaliacao.md" ]; then
+  echo "ERRO: a avaliacao nao gerou relatorio ($OUT/avaliacao.md esta vazio)." >&2
+  exit 1
+fi
+
+case "$STATUS" in
+  0) echo ">> Criterio de aceitacao atendido." ;;
+  3) echo ">> Criterio de aceitacao NAO atendido - ver $OUT/avaliacao.md" ;;
+  *) echo "ERRO: avaliar_criterio.py falhou (codigo $STATUS)." >&2; exit 1 ;;
+esac

@@ -1,0 +1,5 @@
+# Scripts precisam de LF para rodar no Linux (GitHub Actions).
+*.sh text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.jmx text eol=lf
