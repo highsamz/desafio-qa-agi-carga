@@ -1,0 +1,42 @@
+name: performance
+
+on:
+  workflow_dispatch:
+    inputs:
+      teste:
+        description: "Tipo de teste"
+        type: choice
+        options: [smoke, carga, pico]
+        default: smoke
+
+jobs:
+  jmeter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      JMETER_VERSION: "5.6.3"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Instalar JMeter
+        run: |
+          curl -sSL "https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.tgz" | tar -xz
+          echo "JMETER_HOME=$PWD/apache-jmeter-${JMETER_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Executar teste
+        run: ./scripts/run.sh "${{ inputs.teste }}"
+
+      - name: Publicar avaliação no resumo do job
+        if: always()
+        run: cat resultados/*/avaliacao.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: relatorio-${{ inputs.teste }}
+          path: resultados/
